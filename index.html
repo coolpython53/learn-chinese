@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal Chinese Writing Tutor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.2/dist/hanzi-writer.min.js"></script>
+    <style>
+        body { background: #f3f4f6; font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="p-8 flex flex-col items-center">
+
+    <div class="w-full max-w-md bg-white p-6 rounded-3xl shadow-lg">
+        <h1 class="text-xl font-bold mb-4 text-gray-800">Chinese Character Tutor</h1>
+        
+        <input type="text" id="char-input" placeholder="Enter English or Chinese character..." 
+               class="w-full bg-gray-100 p-3 rounded-xl border border-gray-200 outline-none mb-4">
+        
+        <div class="flex gap-2 mb-6">
+            <button onclick="handleLoad()" class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-500 transition">Load Character</button>
+            <a id="translate-link" href="#" target="_blank" class="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg text-center hover:bg-green-500 transition">Translate (Google)</a>
+        </div>
+
+        <div id="practice-area" class="flex flex-col items-center">
+            <div id="writer-container" class="bg-white border border-gray-200 rounded-xl mb-4 h-[250px] w-[250px] flex items-center justify-center">
+                <p class="text-gray-400 text-sm">Enter a char to start</p>
+            </div>
+            
+            <!-- Controls -->
+            <div class="flex flex-col gap-3 w-full">
+                <div class="flex gap-2">
+                    <button onclick="animateChar()" class="flex-1 bg-gray-200 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-300 transition">Auto Play</button>
+                    <button onclick="nextStroke()" class="flex-1 bg-gray-200 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-300 transition">Next Stroke</button>
+                </div>
+                <div class="flex items-center gap-2">
+                    <label class="text-sm text-gray-600">Speed</label>
+                    <input type="range" id="speed-range" min="100" max="2000" value="500" step="100" class="w-full">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let writer = null;
+        let currentStroke = 0;
+
+        document.getElementById('char-input').addEventListener('input', (e) => {
+            const input = e.target.value;
+            const link = document.getElementById('translate-link');
+            link.href = `https://translate.google.com/?sl=en&tl=zh-CN&text=${encodeURIComponent(input)}&op=translate`;
+        });
+
+        function handleLoad() {
+            const input = document.getElementById('char-input').value.trim();
+            if (!input) return;
+            const match = input.match(/[\u4e00-\u9fa5]/);
+            if (match) {
+                currentStroke = 0;
+                loadWriter(match[0]);
+            } else {
+                alert("Please paste a Chinese character from the translation results.");
+            }
+        }
+
+        function loadWriter(char) {
+            const container = document.getElementById('writer-container');
+            container.innerHTML = "";
+            const speed = parseInt(document.getElementById('speed-range').value);
+            
+            writer = HanziWriter.create('writer-container', char, {
+                width: 250, height: 250, padding: 10,
+                strokeColor: '#2563eb', outlineColor: '#cbd5e1',
+                showCharacter: false, showOutline: true,
+                delayBetweenStrokes: speed,
+                charDataLoader: (char, onLoad) => {
+                    fetch(`https://cdn.jsdelivr.net/npm/hanzi-writer-data@2.0.1/${char}.json`)
+                        .then(res => res.json()).then(data => onLoad(data))
+                        .catch(() => alert("Character data not found!"));
+                }
+            });
+        }
+
+        function animateChar() { 
+            if (writer) {
+                writer.animateCharacter({
+                    duration: parseInt(document.getElementById('speed-range').value)
+                });
+            }
+        }
+
+        function nextStroke() {
+            if (writer) {
+                // Use animateStroke to properly animate individual strokes step-by-step
+                writer.animateStroke(currentStroke).then(() => {
+                    currentStroke++;
+                }).catch(() => {
+                    // Reset to the first stroke if we exceed the total stroke count
+                    currentStroke = 0;
+                    writer.animateStroke(currentStroke).then(() => {
+                        currentStroke++;
+                    });
+                });
+            }
+        }
+    </script>
+</body>
+</html>
