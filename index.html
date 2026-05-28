@@ -8,6 +8,14 @@
     <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.2/dist/hanzi-writer.min.js"></script>
     <style>
         body { background: #f3f4f6; font-family: 'Inter', sans-serif; }
+        /* Traditional calligraphy grid style */
+        .writing-box {
+            background-image: linear-gradient(#e5e7eb 1px, transparent 1px), linear-gradient(90deg, #e5e7eb 1px, transparent 1px);
+            background-size: 50px 50px;
+            background-color: #fff;
+            border: 4px solid #e5e7eb;
+            border-radius: 1rem;
+        }
     </style>
 </head>
 <body class="p-8 flex flex-col items-center">
@@ -24,9 +32,11 @@
         </div>
 
         <div id="practice-area" class="flex flex-col items-center">
-            <div id="writer-container" class="bg-white border border-gray-200 rounded-xl mb-4 h-[250px] w-[250px] flex items-center justify-center">
-                <p class="text-gray-400 text-sm">Enter a char to start</p>
+            <!-- Writing Box -->
+            <div id="writer-container" class="writing-box mb-4 h-[250px] w-[250px] flex items-center justify-center relative">
+                <div id="canvas-div" style="width:250px; height:250px;"></div>
             </div>
+            <p id="feedback" class="text-sm text-gray-500 mb-4 font-medium h-5"></p>
             
             <!-- Controls -->
             <div class="flex flex-col gap-3 w-full">
@@ -35,7 +45,7 @@
                     <button onclick="nextStroke()" class="flex-1 bg-gray-200 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-300 transition">Next Stroke</button>
                 </div>
                 <div class="flex items-center gap-2">
-                    <label class="text-sm text-gray-600">Speed</label>
+                    <label class="text-sm text-gray-600 w-16">Speed</label>
                     <input type="range" id="speed-range" min="100" max="2000" value="500" step="100" class="w-full">
                 </div>
             </div>
@@ -65,11 +75,11 @@
         }
 
         function loadWriter(char) {
-            const container = document.getElementById('writer-container');
+            const container = document.getElementById('canvas-div');
             container.innerHTML = "";
             const speed = parseInt(document.getElementById('speed-range').value);
             
-            writer = HanziWriter.create('writer-container', char, {
+            writer = HanziWriter.create('canvas-div', char, {
                 width: 250, height: 250, padding: 10,
                 strokeColor: '#2563eb', outlineColor: '#cbd5e1',
                 showCharacter: false, showOutline: true,
@@ -78,6 +88,22 @@
                     fetch(`https://cdn.jsdelivr.net/npm/hanzi-writer-data@2.0.1/${char}.json`)
                         .then(res => res.json()).then(data => onLoad(data))
                         .catch(() => alert("Character data not found!"));
+                }
+            });
+
+            // Initialize quiz mode
+            writer.quiz({
+                onMistake: () => {
+                    document.getElementById('feedback').innerText = "Try again!";
+                    document.getElementById('feedback').className = "text-sm text-red-500 mb-4 font-medium";
+                },
+                onCorrectStroke: () => {
+                    document.getElementById('feedback').innerText = "Good job!";
+                    document.getElementById('feedback').className = "text-sm text-green-600 mb-4 font-medium";
+                },
+                onComplete: () => {
+                    document.getElementById('feedback').innerText = "Perfect!";
+                    document.getElementById('feedback').className = "text-sm text-blue-600 mb-4 font-bold";
                 }
             });
         }
@@ -92,11 +118,9 @@
 
         function nextStroke() {
             if (writer) {
-                // Use animateStroke to properly animate individual strokes step-by-step
                 writer.animateStroke(currentStroke).then(() => {
                     currentStroke++;
                 }).catch(() => {
-                    // Reset to the first stroke if we exceed the total stroke count
                     currentStroke = 0;
                     writer.animateStroke(currentStroke).then(() => {
                         currentStroke++;
